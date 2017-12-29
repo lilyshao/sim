@@ -20,8 +20,8 @@ public class Sim{
 
 	public Sim() {
 		//TODO: less arbitrary assignment
-		numBusinesses = 4;
-		numPeople = 30;
+		numBusinesses = 3;
+		numPeople = 100;
 	}
 
 	public void initialize() {
@@ -54,7 +54,7 @@ public class Sim{
 		}
 
 		totalSupply = totalSupply();
-		// totolDemand = totalDemand();
+		totalDemand = totalDemand();
 		totalNeeds = totalNeeds();
 
 		// set prices manually, for now
@@ -110,7 +110,7 @@ public class Sim{
 		List<Business> closed = new ArrayList<Business>();
 		for (Business b : businesses) {
 			b.payWage();
-			if (current%5==0) { b.produce(); } //produce every 5 steps
+			if (current%10==0) { b.produce(); } //produce every 10 steps
 			if (b.isClosed) { closed.add(b); }
 		}
 		businesses.removeAll(closed);

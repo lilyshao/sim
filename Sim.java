@@ -3,12 +3,15 @@ import java.util.*;
 public class Sim{
 	protected int current; //current step
 
-	//TODO: protected final double RATIO_PEOPLE_TO_BUSINESSES
-	protected int numBusinesses;
-	protected int numPeople;
+	// including dead(and removed) ones; mainly for assigning unique id
+	protected int numPeopleCreated;
+
+	//protected final double RATIO_PEOPLE_TO_BUSINESSES
 
 	protected List<Person> people;
 	protected List<Business> businesses;
+
+	// protected int peopleGrowth; // # of new people to add to simulation
 
 	protected Map<String, Integer> totalNeeds; //aggregate needs all the people own
 	protected Map<String, Integer> totalSupply; //aggregate inventories of all businesses
@@ -18,23 +21,24 @@ public class Sim{
 	// for now: preset
 	protected Map<String, Integer> prices;
 
-	public Sim() {
-		//TODO: less arbitrary assignment
-		numBusinesses = 3;
-		numPeople = 100;
-	}
+	// TODO: less arbitrary assignment
+	protected int INITIAL_NUM_BUSINESSESS = 3;
+	protected int INITIAL_NUM_PEOPLE = 100;
 
-	public void initialize() {
-		people = generatePeople(numPeople);
-		businesses = generateBusinesses(numBusinesses);
+	public Sim() {
+		people = new ArrayList<Person>();
+		businesses = new ArrayList<Business>();
+		generatePeople(INITIAL_NUM_PEOPLE);
+		generateBusinesses(INITIAL_NUM_BUSINESSESS);
+		numPeopleCreated = INITIAL_NUM_PEOPLE;
 
 		// assign people, businesses to this simulation
 		for (Person p : people) { p.sim = this; }
 		for (Business b : businesses) { b.sim = this; }
 
 		// assign these people to different businesses; using sublist; update employer for each person
-		int factor = numPeople/numBusinesses; //7 try to assign similar # of people to each business
-		for (int i=0; i<numBusinesses; i++) {
+		int factor = INITIAL_NUM_PEOPLE/INITIAL_NUM_BUSINESSESS; //7 try to assign similar # of people to each business
+		for (int i=0; i<INITIAL_NUM_BUSINESSESS; i++) {
 			Business biz = businesses.get(i);
 			List<Person> group = people.subList(i*factor, (i+1)*factor);
 			for (Person p : group) {
@@ -44,8 +48,8 @@ public class Sim{
 		}
 		// if there are persons remain unassigned to business
 		// assign them to the last business in list(businesses)
-		if (numPeople%numBusinesses!=0) { //if there's unassigned person left
-			List<Person> remaining = people.subList(numBusinesses*factor, people.size());
+		if (INITIAL_NUM_PEOPLE%INITIAL_NUM_BUSINESSESS!=0) { //if there's unassigned person left
+			List<Person> remaining = people.subList(INITIAL_NUM_BUSINESSESS*factor, people.size());
 			Business lastBiz = businesses.get(businesses.size()-1);
 			for (Person p : remaining) {
 				p.setEmployer(lastBiz.id);
@@ -63,20 +67,19 @@ public class Sim{
 		prices.put("clothing", 3);
 		prices.put("shelter", 30);
 
-		current = 1; // current step is 1
+		current = 1; // on first step
 	}
 
 	public static void main(String[] args) {
 		Sim sim1 = new Sim();
-		sim1.initialize();
-		// System.out.println(sim1.getPeople());
-		// System.out.println(sim1.getBusinesses());
-		// sim1.step();
-
-		do { sim1.step(); } while ( !sim1.step() );
-		// for (int i=0; i<500; i++) {
-		// 	sim1.step();
-		// }
+		do {
+			sim1.step();
+			// try {
+			//    Thread.sleep(1000);
+			// } catch(InterruptedException e) {
+			//    e.printStackTrace();
+			// }
+		} while ( !sim1.step() );
 	}
 
 	// carry out processes at each turn of step: go through each person & business
@@ -109,13 +112,17 @@ public class Sim{
 
 		List<Business> closed = new ArrayList<Business>();
 		for (Business b : businesses) {
-			b.payWage();
-			if (current%10==0) { b.produce(); } //produce every 10 steps
+			if (b.balance <= 0) { b.isClosed = true; }
+			else {
+				if (current%7==0) { b.produce(); } //produce every 10 steps
+				b.payWage();
+			}
 			if (b.isClosed) { closed.add(b); }
 		}
 		businesses.removeAll(closed);
 
-		current++;
+		// add people to simulation every x steps
+		if (current%7==0) { addPeople(2); }
 
 		System.out.println("There are " + people.size() + " people left, and " + businesses.size() + " businesses left.");
 		System.out.println("Total demand: ");
@@ -126,8 +133,10 @@ public class Sim{
 		printMap( totalNeeds() );
 		System.out.println("\n");
 
-		// end condition: if people are all dead, and/or businesses are all closed
-		if (people.size()<=0 || businesses.size()<=0) { return true; }
+		current++;
+
+		// end condition: if people are all dead and businesses are all closed
+		if (people.size()<=0 && businesses.size()<=0) { return true; }
 		else { return false; }
 	}
 
@@ -136,20 +145,39 @@ public class Sim{
 	public List<Business> getBusinesses() { return businesses; }
 	public List<Person> getPeople() { return people; }
 
-	public List<Person> generatePeople(int x) {
-		List<Person> listPeople = new ArrayList<Person>();
+	public void addPeople(int x) { // x - how many new people to add
 		for (int i=0; i<x; i++) {
-			listPeople.add( new Person(i+1) );
+			numPeopleCreated++;
+			Person p = new Person(numPeopleCreated);
+			p.sim = this;
+			people.add(p);
+
+			// assign new people to businesses (randomly chosen);
+			Business biz = randomBusiness();
+			if (biz!=null) {
+				p.setEmployer(biz.id);
+				biz.employees.add(p);
+			}
 		}
-		return listPeople;
 	}
 
-	public List<Business> generateBusinesses(int x) {
-		List<Business> listBiz = new ArrayList<Business>();
+	public Business randomBusiness() {
+		int size = businesses.size();
+		if (size > 0) {
+			return businesses.get( new Random().nextInt(size) );
+		} else return null;
+	}
+
+	public void generatePeople(int x) {
 		for (int i=0; i<x; i++) {
-			listBiz.add( new Business(i+1) );
+			people.add( new Person(i+1) );
 		}
-		return listBiz;
+	}
+
+	public void generateBusinesses(int x) {
+		for (int i=0; i<x; i++) {
+			businesses.add( new Business(i+1) );
+		}
 	}
 
 	// when a product's totalNeeds > totalSupply: increasePrice(), by how much?

@@ -39,9 +39,11 @@ public class Business extends Entity {
 	public void payWage() {
 		for (Person p : employees) {
 			balance -= p.wage;
-			if (balance < 0) {
+			if (balance <= 0) {
 				// for now: close down
-				isClosed = true;
+				// // isClosed = true;
+				break;
+
 				// TODO: borrow(), or persist a few steps before closing
 			}
 		}

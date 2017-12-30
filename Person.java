@@ -31,7 +31,7 @@ public class Person extends Entity {
 		// productivity = rand.nextInt(5)+1;
 		consumptionRate = rand.nextInt(4)+1; //range(1-4)
 
-		isEmployed = true;
+		isEmployed = false;
 		isDead = false;
 	}
 
@@ -98,11 +98,11 @@ public class Person extends Entity {
 		if (available.size()!=0) {
 			return available.get( rand.nextInt(available.size()) );
 		} else { return null; }
-
 	}
 
 	public void setEmployer(int businessID) {
 		employer = businessID;
+		isEmployed = true;
 	}
 
 	public int employer() {
